@@ -5,11 +5,11 @@
             [clara.rules :refer :all]
   ))
 
-(defrecord Msgs [id target value]) ;obj
+(defrecord Msgs [id target obj])
 
 (defrecord DelMsgs [id])
 
-(defrecord Total [value])
+;;(defrecord Total [value])
 
 ;;(defrule matchdelmsgs
 ;;  ;;[?msg <- Msgs (= "reply" type)]
@@ -25,22 +25,21 @@
  [?msgs <- Msgs]
 )
 
-(defquery get-total []
- [?total <- Total]
-)
+;;(defquery get-total []
+;; [?total <- Total]
+;;)
 
 
-(defrule totalval
-  [?total <- (acc/sum :value) :from [Msgs (= 1 2)]]
-  =>
-(insert! (->Total ?total)))
+;;(defrule totalval
+;;  [?total <- (acc/sum :value) :from [Msgs (= 1 2)]]
+;;  =>
+;;(insert! (->Total ?total)))
 
 
 (def example-rules
   "Desc testsnsrules
-   Test reply
+   Del reply like > 5 
 ")
-   ;;Del reply like < 5
    ;;Del reply time > 10min
    ;;Del tweet time > 1day and like < 5
 (def parser
@@ -85,16 +84,18 @@
               {:name "desc"
                :lhs ()
                :rhs `(print-desc ~thedesc)})
-   ;:unit read-string
+   :unit read-string
 ;;[?msg <- Msgs (= "reply" type)]
-   ;;:clause (fn [property operator value & unit ]
-   ;; {
-   ;;     :property property 
-   ;;     :constraints [(list operator value (if (= unit nil) "" (apply str unit)))]
-   ;; }
-   ;;)
-   ;:symbol symbol-operator
-   ;:digit #(Integer/parseInt %)
+   :clause (fn [property operator value & unit ]
+    {
+        :type Msgs
+        ;:constraints [(list operator value (if (= unit nil) "" (apply str unit)))]
+
+        :constraints [(list `= (symbol "?msgid") (symbol "id")) (list operator  (list (keyword property) (symbol "obj")) value)]
+    }
+   )
+   :symbol symbol-operator
+   :digit #(Integer/parseInt %)
    :target (fn [target-type] {
         :type Msgs
         :constraints [ (list `= (symbol "?target") (symbol "id")) (list `= (symbol "target") target-type)] 
@@ -105,10 +106,10 @@
         :lhs target;'~clauses
         :rhs `(insert! (->DelMsgs ~(symbol "?target")))
     }) 
-   ;:del (fn [target & clauses]
-   ;          {:name "del"
-   ;         :lhs test ;'~clauses
-   ;         :rhs `(insert! (->DelMsgs "aaa"))})
+   :del (fn [target & clauses]
+             {:name "del"
+            :lhs clauses;'~clauses
+            :rhs `(insert! (->DelMsgs ~(symbol "?msgid")))})
 })
 
 ;(defrule find-tweet
@@ -128,13 +129,13 @@
         (clojure.pprint/pprint (insta/transform transform-options parse-tree))
 
         (let [session (-> (mk-session 'snsguardian.core (insta/transform transform-options parse-tree))
-                      (insert (->Msgs "msg1" "reply" 1)) ;{:like 10 :rt 20}
-                      (insert (->Msgs "msg2" "tweet" 1)) ;{:like 10 :rt 20}
-                      (insert (->Msgs "msg3" "reply" 1)) ;{:like 10 :rt 20}
+                      (insert (->Msgs "msg1" "reply" {:like 10 :rt 20}))
+                      (insert (->Msgs "msg2" "reply" {:like 1 :rt 10}))
+                      (insert (->Msgs "msg3" "reply" {:like 3 :rt 10})) 
                       (fire-rules))]
         (println "====")
         (clojure.pprint/pprint (query session get-delmsgs))
-        (clojure.pprint/pprint (query session get-total))
+        ;;(clojure.pprint/pprint (query session get-total))
         )
     )
 
