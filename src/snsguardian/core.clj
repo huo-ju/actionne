@@ -1,6 +1,7 @@
 (ns snsguardian.core
   (:gen-class)
-  (:require [instaparse.core :as insta]
+  (:require [clojure.string :as string]
+            [instaparse.core :as insta]
             [clara.rules.accumulators :as acc]
             [clara.rules :refer :all]
   ))
@@ -8,56 +9,48 @@
 (defrecord Msgs [id target obj])
 
 (defrecord DelMsgs [id])
-
-;;(defrecord Total [value])
-
-;;(defrule matchdelmsgs
-;;  ;;[?msg <- Msgs (= "reply" type)]
-;;  [?msg <- Msgs (>= 20 (:like obj))]
-;;  =>
-;;  (insert! (->DelMsgs (:id ?msg))))
+(defrecord ActionMsgs [action id])
 
 (defquery get-delmsgs []
  [?msgs <- DelMsgs]
+)
+
+(defquery get-actionmsgs []
+ [?msgs <- ActionMsgs]
 )
 
 (defquery get-msgs []
  [?msgs <- Msgs]
 )
 
-;;(defquery get-total []
-;; [?total <- Total]
-;;)
-
-
-;;(defrule totalval
-;;  [?total <- (acc/sum :value) :from [Msgs (= 1 2)]]
-;;  =>
-;;(insert! (->Total ?total)))
-
 
 (def example-rules
   "Desc testsnsrules
-   Del reply like > 5 
+   Del reply like > 5 rt > 10
+   Do remove like > 5 rt > 10
+   Do notify like = 1
+   Do notify rt = 15
+   Do show name include str:aaa
 ")
-   ;;Del reply time > 10min
-   ;;Del tweet time > 1day and like < 5
+
 (def parser
   (insta/parser
-   "<statement> = [ desc | del | test]+
+   "<statement> = [ desc | del | action | test]+
     desc = <'Desc'> space utf8stre
-    del  = <'Del'> target space clause [logic clause]*
+    action = <'Do'> string space clause [clause]*
+    del  = <'Del'> target space clause [clause]*
     test  = <'Test'> target
-    clause = string symbol digit ?[unit]
+    clause = string symbol [ digit | strvar ] ?[unit]
     unit = 'min' | 'day';
     logic = 'and' | 'or' | 'not';
-    symbol = '>' | '<' | '=' | '>=' | '<=' | '!=';
+    symbol = '>' | '<' | '=' | '>=' | '<=' | '!=' | 'include';
     target = 'tweet' | 'reply';
     <percent> = #'[0-9]\\d?(?:\\.\\d{1,2})?%';
     <string> = #'[A-Za-z0-9_-]+';
     <space> = <#'[ ]+'>;
     <utf8str> = #'([^\r\n\"\\\\]|\\s\\\\.,)+';
-    <utf8stre>= #'([^\r\n\"]|\\s\\\\.,)+';
+    <utf8stre> = #'([^\r\n\"]|\\s\\\\.,)+';
+    strvar = <'str:'> utf8stre
     <float> = #'[0-9]+(\\.[0-9]+)?';
     digit = #'[0-9]+';
     <nl> =  #'[\r\n]+';
@@ -72,7 +65,14 @@
                 "<" `<
                 ">=" `>=
                 "<=" `<=
-                "!=" `not=})
+                "!=" `not=
+                "include" `string/includes?
+                })
+
+(def logic-operator {"and" `:and
+"or" `:or
+"not" `:not
+})
 
 (def msg-types
   {"msgs" Msgs
@@ -85,16 +85,18 @@
                :lhs ()
                :rhs `(print-desc ~thedesc)})
    :unit read-string
-;;[?msg <- Msgs (= "reply" type)]
    :clause (fn [property operator value & unit ]
     {
         :type Msgs
-        ;:constraints [(list operator value (if (= unit nil) "" (apply str unit)))]
-
         :constraints [(list `= (symbol "?msgid") (symbol "id")) (list operator  (list (keyword property) (symbol "obj")) value)]
     }
    )
    :symbol symbol-operator
+   :strvar (fn [input]
+    :lhs ()
+    :rhs `~input
+   )
+   :logic logic-operator
    :digit #(Integer/parseInt %)
    :target (fn [target-type] {
         :type Msgs
@@ -110,6 +112,10 @@
              {:name "del"
             :lhs clauses;'~clauses
             :rhs `(insert! (->DelMsgs ~(symbol "?msgid")))})
+   :action (fn [action & clauses]
+             {
+            :lhs clauses;'~clauses
+            :rhs `(insert! (->ActionMsgs ~action ~(symbol "?msgid")))})
 })
 
 ;(defrule find-tweet
@@ -129,12 +135,13 @@
         (clojure.pprint/pprint (insta/transform transform-options parse-tree))
 
         (let [session (-> (mk-session 'snsguardian.core (insta/transform transform-options parse-tree))
-                      (insert (->Msgs "msg1" "reply" {:like 10 :rt 20}))
-                      (insert (->Msgs "msg2" "reply" {:like 1 :rt 10}))
-                      (insert (->Msgs "msg3" "reply" {:like 3 :rt 10})) 
+                      (insert (->Msgs "msg1" "reply" {:like 10 :rt 12 :name "test"}))
+                      (insert (->Msgs "msg2" "reply" {:like 1 :rt 10 :name "111paaabbb"}))
+                      (insert (->Msgs "msg3" "reply" {:like 6 :rt 15 :name "111222"})) 
                       (fire-rules))]
         (println "====")
         (clojure.pprint/pprint (query session get-delmsgs))
+        (clojure.pprint/pprint (query session get-actionmsgs))
         ;;(clojure.pprint/pprint (query session get-total))
         )
     )
