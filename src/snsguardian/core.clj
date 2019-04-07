@@ -12,11 +12,11 @@
 
 
 (defquery get-actionmsgs []
- [?msgs <- ActionMsgs]
+ [?msg <- ActionMsgs]
 )
 
 (defquery get-msgs []
- [?msgs <- Msgs]
+ [?msg <- Msgs]
 )
 
 
@@ -90,6 +90,7 @@
               {:name "desc"
                :lhs ()
                :rhs `(print-desc ~thedesc)})
+   :namespace (fn [identifier localname] (into {} [identifier localname]))
    :unit read-string
    :clause (fn [property operator value & unit ]
     {
@@ -107,7 +108,6 @@
    :target (fn [target-type] {
         :type Msgs
         :constraints [ (list `= (symbol "?target") (symbol "id")) (list `= (symbol "target") target-type)] 
-        ;:constraints [`(= 1 1)] 
     })
    :action (fn [action & clauses]
              {
@@ -115,21 +115,21 @@
             :rhs `(insert! (->ActionMsgs ~action ~(symbol "?msgid")))})
 })
 
-(defn doaction [msg]
-
+(defn doaction [dslns msg]
     (println "do action:")
-    (let [{ {action :action id :id} :?msgs} msg]
-    (println action id))
-    ;(clojure.pprint/pprint msg)
-    0
+    (let [{identifier :NSIDENTIFIER  localname :NSLOCALNAME} dslns]
+        (let [{ {action :action id :id} :?msg} msg]
+        (println "run ns: " (str identifier "." localname))
+        (println action id))
+    )
 )
 (defn -main [& args]
 
     (let [parse-tree (parser example-rules)]
         
         (let [transformed (insta/transform transform-options parse-tree)]
-            (let [[ver namspace]  transformed]
-                (println ver namspace)
+            (clojure.pprint/pprint transformed)
+            (let [[ver dslns]  transformed]
                 (let [session (-> (mk-session 'snsguardian.core transformed)
                               (insert (->Msgs "msg1" "reply" {:like 10 :rt 12 :name "test"}))
                               (insert (->Msgs "msg2" "reply" {:like 1 :rt 10 :name "111paaabbb"}))
@@ -137,7 +137,7 @@
                               (fire-rules))]
                 (println "====action")
                 (let [actionmsgs (query session get-actionmsgs)]
-                    (map doaction actionmsgs)
+                    (map (fn [msg] (doaction dslns msg)) actionmsgs)
                 )
                 )
             )
