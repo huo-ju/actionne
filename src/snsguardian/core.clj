@@ -8,12 +8,8 @@
 
 (defrecord Msgs [id target obj])
 
-(defrecord DelMsgs [id])
 (defrecord ActionMsgs [action id])
 
-(defquery get-delmsgs []
- [?msgs <- DelMsgs]
-)
 
 (defquery get-actionmsgs []
  [?msgs <- ActionMsgs]
@@ -25,7 +21,9 @@
 
 
 (def example-rules
-  "Desc testsnsrules
+  "Ver 1.0.0
+   Namespace huoju/twitter
+   Desc testsnsrules
    Del reply like > 5 rt > 10
    Do remove like > 5 rt > 10
    Do notify like = 1
@@ -35,7 +33,9 @@
 
 (def parser
   (insta/parser
-   "<statement> = [ desc | del | action | test]+
+   "<statement> = ver namespace [ desc | del | action | test]+
+    ver = <'Ver'> space MAJOR <'.'> MINOR <'.'> PATCH [META]
+    namespace = <'Namespace'> space NSIDENTIFIER <'/'> NSLOCALNAME
     desc = <'Desc'> space utf8stre
     action = <'Do'> string space clause [clause]*
     del  = <'Del'> target space clause [clause]*
@@ -53,6 +53,12 @@
     strvar = <'str:'> utf8stre
     <float> = #'[0-9]+(\\.[0-9]+)?';
     digit = #'[0-9]+';
+    MAJOR = digit
+    MINOR = digit
+    PATCH = digit
+    META = #'[0-9A-Za-z-]'
+    NSIDENTIFIER = string
+    NSLOCALNAME = string
     <nl> =  #'[\r\n]+';
   "
    :auto-whitespace :standard))
@@ -80,7 +86,7 @@
 
 (def transform-options
     {
-    :desc (fn [thedesc]
+   :desc (fn [thedesc]
               {:name "desc"
                :lhs ()
                :rhs `(print-desc ~thedesc)})
@@ -103,48 +109,39 @@
         :constraints [ (list `= (symbol "?target") (symbol "id")) (list `= (symbol "target") target-type)] 
         ;:constraints [`(= 1 1)] 
     })
-   :test (fn [& target]{
-        :name "test"
-        :lhs target;'~clauses
-        :rhs `(insert! (->DelMsgs ~(symbol "?target")))
-    }) 
-   :del (fn [target & clauses]
-             {:name "del"
-            :lhs clauses;'~clauses
-            :rhs `(insert! (->DelMsgs ~(symbol "?msgid")))})
    :action (fn [action & clauses]
              {
             :lhs clauses;'~clauses
             :rhs `(insert! (->ActionMsgs ~action ~(symbol "?msgid")))})
 })
 
-;(defrule find-tweet
-;    [Msgs (= ?target target) (= target "tweet")] 
-;=>
-;    (insert! (->DelMsgs ?target))
-;)
-;;(defn doparse [input]
-;;  (->> (parser input) (insta/transform transform-options)))
+(defn doaction [msg]
 
+    (println "do action:")
+    (let [{ {action :action id :id} :?msgs} msg]
+    (println action id))
+    ;(clojure.pprint/pprint msg)
+    0
+)
 (defn -main [& args]
-    ;;(clojure.pprint/pprint "hello 2")
-    ;;(clojure.pprint/pprint example-rules)
 
     (let [parse-tree (parser example-rules)]
-        ;;(clojure.pprint/pprint parse-tree)
-        (clojure.pprint/pprint (insta/transform transform-options parse-tree))
-
-        (let [session (-> (mk-session 'snsguardian.core (insta/transform transform-options parse-tree))
-                      (insert (->Msgs "msg1" "reply" {:like 10 :rt 12 :name "test"}))
-                      (insert (->Msgs "msg2" "reply" {:like 1 :rt 10 :name "111paaabbb"}))
-                      (insert (->Msgs "msg3" "reply" {:like 6 :rt 15 :name "111222"})) 
-                      (fire-rules))]
-        (println "====")
-        (clojure.pprint/pprint (query session get-delmsgs))
-        (clojure.pprint/pprint (query session get-actionmsgs))
-        ;;(clojure.pprint/pprint (query session get-total))
+        
+        (let [transformed (insta/transform transform-options parse-tree)]
+            (let [[ver namspace]  transformed]
+                (println ver namspace)
+                (let [session (-> (mk-session 'snsguardian.core transformed)
+                              (insert (->Msgs "msg1" "reply" {:like 10 :rt 12 :name "test"}))
+                              (insert (->Msgs "msg2" "reply" {:like 1 :rt 10 :name "111paaabbb"}))
+                              (insert (->Msgs "msg3" "reply" {:like 6 :rt 15 :name "111222"})) 
+                              (fire-rules))]
+                (println "====action")
+                (let [actionmsgs (query session get-actionmsgs)]
+                    (map doaction actionmsgs)
+                )
+                )
+            )
         )
     )
-
 )
 
