@@ -2,6 +2,7 @@
   (:gen-class)
   (:require [clojure.string :as string]
             [clojure.tools.logging :as log]
+            [config.core :refer [env]]
             [instaparse.core :as insta]
             [clara.rules.accumulators :as acc]
             [clara.rules :refer :all]
@@ -136,7 +137,7 @@
 
 (def app (api (apply routes app-routes)))
 
-(def creds (map->UserCredentials {:consumer-key "", :consumer-secret ""}))
+(def creds (map->UserCredentials {:consumer-key "MVpOo3ttdkPeTfylWtkRqg", :consumer-secret "EvMJYxiV4VoO1SvMBNgElXbtOsQOGSofDvXrNdYm0"}))
 ;(env->UserCredentials)
 
 (defn -main [& args]

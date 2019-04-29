@@ -5,7 +5,9 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :main  ^:skip-aot snsguardian.core
   ;:aot [snsguardian.core]
-  :profiles {:uberjar {:aot :all} }
+  :profiles {:uberjar {:aot :all}
+             :dev {:resource-paths ["config/dev"]}
+             :prod {:resource-paths ["config/prod"]} }
   :plugins [ [lein-ring "0.12.0"] [lein-cljfmt "0.6.0"]]
   :dependencies [[org.clojure/clojure "1.9.0"],
     [instaparse "1.4.9"] ,
