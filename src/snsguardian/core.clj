@@ -136,8 +136,8 @@
 )
 
 (def app (api (apply routes app-routes)))
-
-(def creds (map->UserCredentials {:consumer-key "MVpOo3ttdkPeTfylWtkRqg", :consumer-secret "EvMJYxiV4VoO1SvMBNgElXbtOsQOGSofDvXrNdYm0"}))
+;{:consumer-key "MVpOo3ttdkPeTfylWtkRqg", :consumer-secret "EvMJYxiV4VoO1SvMBNgElXbtOsQOGSofDvXrNdYm0"}
+(def creds (map->UserCredentials  (:twitter env) ))
 ;(env->UserCredentials)
 
 (defn -main [& args]
