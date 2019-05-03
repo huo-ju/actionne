@@ -11,10 +11,8 @@
             [compojure.api.exception :as ex]
             [ring.util.http-response :refer :all]
             [ring.adapter.jetty :refer [run-jetty]]
-            [twttr.api :as api]
-            [twttr.auth :refer :all]
             [snsguardian.approutes :refer [app-routes]]
-
+            [snsguardian.plugins.twitter :as twitter]
   ))
 
 (defrecord Msgs [id target obj])
@@ -137,7 +135,6 @@
 
 (def app (api (apply routes app-routes)))
 ;{:consumer-key "MVpOo3ttdkPeTfylWtkRqg", :consumer-secret "EvMJYxiV4VoO1SvMBNgElXbtOsQOGSofDvXrNdYm0"}
-(def creds (map->UserCredentials  (:twitter env) ))
 ;(env->UserCredentials)
 
 (defn -main [& args]
@@ -161,17 +158,11 @@
     ;    )
     ;)
     (log/info "start...")
-    (let [tweets (api/statuses-user-timeline creds :params {:screen_name "virushuo"})]
-        (doseq [tweet tweets] 
-            (prn tweet)
-            (prn "====")
-        )
-        
-    )
     ;(prn creds )
     ;(tt/start!)
     ;(def task (tt/every! 2 (bound-fn [] (log/info "hi."))))
     ;(print "ok")
     ;(run-jetty app {:port 3000})
+    (twitter/fetchtweets)
 )
 
