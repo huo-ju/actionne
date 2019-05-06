@@ -1,6 +1,7 @@
 (ns snsguardian.core
   (:gen-class)
   (:require [clojure.string :as string]
+            [clojure.edn :as edn]
             [clojure.tools.logging :as log]
             [config.core :refer [env]]
             [instaparse.core :as insta]
@@ -11,9 +12,14 @@
             [compojure.api.exception :as ex]
             [ring.util.http-response :refer :all]
             [ring.adapter.jetty :refer [run-jetty]]
+            [dynapath.util :as dynapath]
+            [clojure.java [classpath :as classpath]]
+            [clojure.tools.namespace.find :as ns-find]
             [snsguardian.approutes :refer [app-routes]]
+            [snsguardian.classpath]
             [snsguardian.plugins.twitter :as twitter]
-  ))
+  )
+)
 
 (defrecord Msgs [id target obj])
 
@@ -137,6 +143,25 @@
 ;{:consumer-key "MVpOo3ttdkPeTfylWtkRqg", :consumer-secret "EvMJYxiV4VoO1SvMBNgElXbtOsQOGSofDvXrNdYm0"}
 ;(env->UserCredentials)
 
+(defn load-plugin [^java.net.URL url]
+  (let [{:keys [description init]} (edn/read-string (slurp url))]
+    (println  (str "loading module: " description))
+    (-> init str (string/split #"/") first symbol require)
+    ((resolve init))))
+
+(defn load-plugins []
+  (let [plugins (.getResources (ClassLoader/getSystemClassLoader) "helloplugin/hello.edn")]
+    (doseq [plugin (enumeration-seq plugins)]
+(load-plugin (. ^java.net.URL plugin openStream)))))
+
+
+(defn runrequire []
+    (-> "helloplugin.core/init" str (string/split #"/") first symbol require)
+)
+
+
+
+
 (defn -main [& args]
     ;(let [parse-tree (parser example-rules)]
     ;    
@@ -163,6 +188,41 @@
     ;(def task (tt/every! 2 (bound-fn [] (log/info "hi."))))
     ;(print "ok")
     ;(run-jetty app {:port 3000})
-    (twitter/fetchtweets)
+    ;(twitter/fetchtweets)
+    ;(load-plugins)
+    ;(prn ((string/split "helloplugin.core/init" #"/") first symbol))
+    ;(str (string/split #"/") first symbol require)
+
+    ;  (prn (dynapath/classpath-urls  (the-classloader)))
+    ;(let [result (add-jar-to-classpath! (clojure.java.io/file "/home/huoju/dev/helloplugin/target/hello.jar"))]
+    ;    (println "add..")
+    ;    (prn result)
+
+    ;)
+    ;  (prn (dynapath/classpath-urls  (the-classloader)))
+        ;(binding [*use-context-classloader* true]
+    ;(add-jar-to-classpath! (clojure.java.io/file "/home/huoju/dev/helloplugin/target/hello.jar"))
+    ;(require (symbol "helloplugin.core"))
+    ;((resolve (symbol "helloplugin.core/init")))
+
+    ;(prn (require (symbol "tea-time.core")))
+
+  ;(prn (dynapath/addable-classpath? dcl))
+  ;(let [sysloader (ClassLoader/getSystemClassLoader)]
+  ;  (prn (dynapath/addable-classpath? sysloader)))
+
+    ;(prn (ns-find/find-namespaces (classpath/classpath)))
+    ;(println "==============end")
+
+    ;(runrequire)
+    ;(snsguardian.classpath/add-classpath "/home/huoju/dev/kaocha/fixtures/a-tests")
+    ;(require (symbol "foo.bar-test"))
+    ;((resolve (symbol "foo.bar-test/init")))
+
+    ;(snsguardian.classpath/add-classpath "/home/huoju/dev/helloplugin/src/")
+    (snsguardian.classpath/add-classpath "/home/huoju/dev/helloplugin/target/hello.jar")
+    (require (symbol "helloplugin.core"))
+    (println "====")
+    ((resolve (symbol "helloplugin.core/init")))
 )
 
