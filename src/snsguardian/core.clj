@@ -17,11 +17,10 @@
             [clojure.tools.namespace.find :as ns-find]
             [snsguardian.approutes :refer [app-routes]]
             [snsguardian.classpath]
-            [snsguardian.plugins.twitter :as twitter]
   )
 )
 
-(defrecord Msgs [id target obj])
+(defrecord Msgs [id obj])
 
 (defrecord ActionMsgs [action id])
 
@@ -39,33 +38,31 @@
   "Ver 1.0.0
    Namespace huoju/twitter
    Desc testsnsrules
-   Del reply like > 5 rt > 10
-   Do remove like > 5 rt > 10
-   Do notify like = 1
-   Do notify rt = 15
-   Do show name include str:aaa
+   Do remove like > 5 rt > 10 category = str:tweet
+   Do notify like = 1 category = str:tweet 
+   Do notify rt = 15 category = str:tweet
+   Do notify category = str:tweet
+   Do show name include str:aaa category = str:tweet
 ")
 
 (def parser
   (insta/parser
-   "<statement> = ver namespace [ desc | del | action | test]+
+   "<statement> = ver namespace [ desc | action ]+
     ver = <'Ver'> space MAJOR <'.'> MINOR <'.'> PATCH [META]
     namespace = <'Namespace'> space NSIDENTIFIER <'/'> NSLOCALNAME
     desc = <'Desc'> space utf8stre
     action = <'Do'> string space clause [clause]*
-    del  = <'Del'> target space clause [clause]*
-    test  = <'Test'> target
     clause = string symbol [ digit | strvar ] ?[unit]
     unit = 'min' | 'day';
     logic = 'and' | 'or' | 'not';
     symbol = '>' | '<' | '=' | '>=' | '<=' | '!=' | 'include';
-    target = 'tweet' | 'reply';
     <percent> = #'[0-9]\\d?(?:\\.\\d{1,2})?%';
     <string> = #'[A-Za-z0-9_-]+';
     <space> = <#'[ ]+'>;
     <utf8str> = #'([^\r\n\"\\\\]|\\s\\\\.,)+';
     <utf8stre> = #'([^\r\n\"]|\\s\\\\.,)+';
-    strvar = <'str:'> utf8stre
+    <utf8strwithoutspace> = #'([^\r\n\" ]|\\s\\\\.,)+';
+    strvar = <'str:'> utf8strwithoutspace
     <float> = #'[0-9]+(\\.[0-9]+)?';
     digit = #'[0-9]+';
     MAJOR = digit
@@ -120,10 +117,6 @@
    )
    :logic logic-operator
    :digit #(Integer/parseInt %)
-   :target (fn [target-type] {
-        :type Msgs
-        :constraints [ (list `= (symbol "?target") (symbol "id")) (list `= (symbol "target") target-type)] 
-    })
    :action (fn [action & clauses]
              {
             :lhs clauses;'~clauses
@@ -159,19 +152,21 @@
     (-> "helloplugin.core/init" str (string/split #"/") first symbol require)
 )
 
-
-
+(defn runsession [session fact]
+    (print "===run session")
+    (print fact)
+    session
+)
 
 (defn -main [& args]
     ;(let [parse-tree (parser example-rules)]
-    ;    
     ;    (let [transformed (insta/transform transform-options parse-tree)]
-    ;        ;(clojure.pprint/pprint transformed)
+    ;        (clojure.pprint/pprint transformed)
     ;        (let [[ver dslns]  transformed]
     ;            (let [session (-> (mk-session 'snsguardian.core transformed)
-    ;                          (insert (->Msgs "msg1" "reply" {:like 10 :rt 12 :name "test"}))
-    ;                          (insert (->Msgs "msg2" "reply" {:like 1 :rt 10 :name "111paaabbb"}))
-    ;                          (insert (->Msgs "msg3" "reply" {:like 6 :rt 15 :name "111222"})) 
+    ;                          (insert (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
+    ;                          (insert (->Msgs "msg2" {:category "tweet" :like 1 :rt 10 :name "111paaabbb"}))
+    ;                          (insert (->Msgs "msg3" {:category "reply" :like 6 :rt 15 :name "111222"})) 
     ;                          (fire-rules))]
     ;            (println "====action")
     ;            (let [actionmsgs (query session get-actionmsgs)]
@@ -182,7 +177,7 @@
     ;        )
     ;    )
     ;)
-    (log/info "start...")
+    ;(log/info "start...")
     ;(prn creds )
     ;(tt/start!)
     ;(def task (tt/every! 2 (bound-fn [] (log/info "hi."))))
@@ -193,36 +188,44 @@
     ;(prn ((string/split "helloplugin.core/init" #"/") first symbol))
     ;(str (string/split #"/") first symbol require)
 
-    ;  (prn (dynapath/classpath-urls  (the-classloader)))
-    ;(let [result (add-jar-to-classpath! (clojure.java.io/file "/home/huoju/dev/helloplugin/target/hello.jar"))]
-    ;    (println "add..")
-    ;    (prn result)
+    (snsguardian.classpath/add-classpath "/home/huoju/dev/snsplugin/twitter/target/twitter.jar")
+    (require (symbol "twitter.core"))
 
-    ;)
-    ;  (prn (dynapath/classpath-urls  (the-classloader)))
-        ;(binding [*use-context-classloader* true]
-    ;(add-jar-to-classpath! (clojure.java.io/file "/home/huoju/dev/helloplugin/target/hello.jar"))
-    ;(require (symbol "helloplugin.core"))
-    ;((resolve (symbol "helloplugin.core/init")))
-
-    ;(prn (require (symbol "tea-time.core")))
-
-  ;(prn (dynapath/addable-classpath? dcl))
-  ;(let [sysloader (ClassLoader/getSystemClassLoader)]
-  ;  (prn (dynapath/addable-classpath? sysloader)))
-
-    ;(prn (ns-find/find-namespaces (classpath/classpath)))
-    ;(println "==============end")
-
-    ;(runrequire)
-    ;(snsguardian.classpath/add-classpath "/home/huoju/dev/kaocha/fixtures/a-tests")
-    ;(require (symbol "foo.bar-test"))
-    ;((resolve (symbol "foo.bar-test/init")))
-
-    ;(snsguardian.classpath/add-classpath "/home/huoju/dev/helloplugin/src/")
-    (snsguardian.classpath/add-classpath "/home/huoju/dev/helloplugin/target/hello.jar")
-    (require (symbol "helloplugin.core"))
     (println "====")
-    ((resolve (symbol "helloplugin.core/init")))
-)
+    (let [tweets ((resolve (symbol "twitter.core/fetchtweets")) (:twitter env) )]
+       (let [facts (map (fn [tweet] 
+            (->Msgs (:id tweet) (:object tweet))
+        ) tweets) ]
+            (let [parse-tree (parser example-rules)]
+                (let [transformed (insta/transform transform-options parse-tree)]
+                    (clojure.pprint/pprint transformed)
+                    (let [[ver dslns]  transformed]
+                        (print facts)
+                        (let [session (-> (mk-session 'snsguardian.core transformed)
+                                      ;(runsession (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
+                                      (insert-all (into [] facts))
+                                      ;(insert (->Msgs   tweets))
+                                      ;(insert-all (list (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}) (->Msgs "msg2" {:category "tweet" :like 1 :rt 10 :name "111paaabbb"})))
+                                      ;(insert )
+                                      ;(insert (->Msgs "msg3" {:category "reply" :like 6 :rt 15 :name "111222"})) 
+                                      (fire-rules))]
+                        (println "====action")
+                        (let [actionmsgs (query session get-actionmsgs)]
+                            (println actionmsgs)
+                            (map (fn [msg] (doaction dslns msg)) actionmsgs)
+                        )
+                        )
+                    )
+                )
+            )
 
+
+        )
+    )
+
+    
+)
+;
+;
+;
+;
