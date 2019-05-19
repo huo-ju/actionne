@@ -20,9 +20,9 @@
   )
 )
 
-(defrecord Msgs [id obj])
+(defrecord Msgs [id obj original])
 
-(defrecord ActionMsgs [action id])
+(defrecord ActionMsgs [action id original])
 
 
 (defquery get-actionmsgs []
@@ -38,11 +38,11 @@
   "Ver 1.0.0
    Namespace huoju/twitter
    Desc testsnsrules
-   Do remove like > 5 rt > 10 category = str:tweet
-   Do notify like = 1 category = str:tweet 
-   Do notify rt = 15 category = str:tweet
+   Do remove favorite_count > 5 retweet_count > 10 category = str:tweet
+   Do notify favorite_count = 1 category = str:tweet 
+   Do notify retweet_count = 15 category = str:tweet
    Do notify category = str:tweet
-   Do show name include str:aaa category = str:tweet
+   Do show text include str:aaa category = str:tweet
 ")
 
 (def parser
@@ -107,7 +107,7 @@
    :clause (fn [property operator value & unit ]
     {
         :type Msgs
-        :constraints [(list `= (symbol "?msgid") (symbol "id")) (list operator  (list (keyword property) (symbol "obj")) value)]
+        :constraints [(list `= (symbol "?msgid") (symbol "id"))  (list `= (symbol "?original") (symbol "original")) (list operator (list (keyword property) (symbol "obj")) value)]
     }
    )
    :symbol symbol-operator
@@ -120,13 +120,14 @@
    :action (fn [action & clauses]
              {
             :lhs clauses;'~clauses
-            :rhs `(insert! (->ActionMsgs ~action ~(symbol "?msgid")))})
+            :rhs `(insert! (->ActionMsgs ~action ~(symbol "?msgid") ~(symbol "?original")))})
 })
 
 (defn doaction [dslns msg]
-    (println "do action:")
     (let [{identifier :NSIDENTIFIER  localname :NSLOCALNAME} dslns]
-        (let [{ {action :action id :id} :?msg} msg]
+        (let [{ {action :action id :id original :original} :?msg} msg]
+
+        ((resolve (symbol (str localname ".core/" action)) ) id original)
         (println "run ns: " (str identifier "." localname))
         (println action id))
     )
@@ -191,16 +192,14 @@
     (snsguardian.classpath/add-classpath "/home/huoju/dev/snsplugin/twitter/target/twitter.jar")
     (require (symbol "twitter.core"))
 
-    (println "====")
     (let [tweets ((resolve (symbol "twitter.core/fetchtweets")) (:twitter env) )]
        (let [facts (map (fn [tweet] 
-            (->Msgs (:id tweet) (:object tweet))
-        ) tweets) ]
+            (->Msgs (:id tweet) (:object tweet) (:original tweet))
+        )  tweets) ]
             (let [parse-tree (parser example-rules)]
                 (let [transformed (insta/transform transform-options parse-tree)]
-                    (clojure.pprint/pprint transformed)
+                    ;(clojure.pprint/pprint transformed)
                     (let [[ver dslns]  transformed]
-                        (print facts)
                         (let [session (-> (mk-session 'snsguardian.core transformed)
                                       ;(runsession (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
                                       (insert-all (into [] facts))
@@ -211,7 +210,7 @@
                                       (fire-rules))]
                         (println "====action")
                         (let [actionmsgs (query session get-actionmsgs)]
-                            (println actionmsgs)
+                            ;(prn actionmsgs)
                             (map (fn [msg] (doaction dslns msg)) actionmsgs)
                         )
                         )
