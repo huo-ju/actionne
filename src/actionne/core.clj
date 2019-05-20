@@ -1,4 +1,4 @@
-(ns snsguardian.core
+(ns actionne.core
   (:gen-class)
   (:require [clojure.string :as string]
             [clojure.edn :as edn]
@@ -15,8 +15,8 @@
             [dynapath.util :as dynapath]
             [clojure.java [classpath :as classpath]]
             [clojure.tools.namespace.find :as ns-find]
-            [snsguardian.approutes :refer [app-routes]]
-            [snsguardian.classpath]
+            [actionne.approutes :refer [app-routes]]
+            [actionne.classpath]
   )
 )
 
@@ -164,7 +164,7 @@
     ;    (let [transformed (insta/transform transform-options parse-tree)]
     ;        (clojure.pprint/pprint transformed)
     ;        (let [[ver dslns]  transformed]
-    ;            (let [session (-> (mk-session 'snsguardian.core transformed)
+    ;            (let [session (-> (mk-session 'actionne.core transformed)
     ;                          (insert (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
     ;                          (insert (->Msgs "msg2" {:category "tweet" :like 1 :rt 10 :name "111paaabbb"}))
     ;                          (insert (->Msgs "msg3" {:category "reply" :like 6 :rt 15 :name "111222"})) 
@@ -189,7 +189,7 @@
     ;(prn ((string/split "helloplugin.core/init" #"/") first symbol))
     ;(str (string/split #"/") first symbol require)
 
-    (snsguardian.classpath/add-classpath "/home/huoju/dev/snsplugin/twitter/target/twitter.jar")
+    (actionne.classpath/add-classpath "/home/huoju/dev/snsplugin/twitter/target/twitter.jar")
     (require (symbol "twitter.core"))
 
     (let [tweets ((resolve (symbol "twitter.core/fetchtweets")) (:twitter env) )]
@@ -200,7 +200,7 @@
                 (let [transformed (insta/transform transform-options parse-tree)]
                     ;(clojure.pprint/pprint transformed)
                     (let [[ver dslns]  transformed]
-                        (let [session (-> (mk-session 'snsguardian.core transformed)
+                        (let [session (-> (mk-session 'actionne.core transformed)
                                       ;(runsession (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
                                       (insert-all (into [] facts))
                                       ;(insert (->Msgs   tweets))

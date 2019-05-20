@@ -1,4 +1,4 @@
-(ns snsguardian.approutes
+(ns actionne.approutes
   (:gen-class)
   (:require [clojure.tools.logging :as log]
             [compojure.api.sweet :refer [GET POST PUT DELETE]]

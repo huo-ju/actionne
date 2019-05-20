@@ -1,6 +1,6 @@
-(ns snsguardian.core-test
+(ns actionne.core-test
   (:require [clojure.test :refer :all]
-            [snsguardian.core :refer :all]))
+            [actionne.core :refer :all]))
 
 (deftest a-test
   (testing "FIXME, I fail."

@@ -1,10 +1,10 @@
-(defproject snsguardian "0.1.0-SNAPSHOT"
+(defproject actionne "0.1.0-SNAPSHOT"
   :description "Protect your privacy, clean up your sns accounts "
   :url "http://example.com/FIXME"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
-  :main  ^:skip-aot snsguardian.core
-  ;:aot [snsguardian.core]
+  :main  ^:skip-aot actionne.core
+  ;:aot [actionne.core]
   :profiles {:uberjar {:aot :all}
              :dev {:resource-paths ["config/dev"]}
              :prod {:resource-paths ["config/prod"]} }
@@ -21,4 +21,4 @@
     [org.clojure/tools.namespace "0.2.11"]
     [org.clojure/java.classpath "0.2.3"] 
     ]
-  :repl-options {:init-ns snsguardian.core})
+  :repl-options {:init-ns actionne.core})
