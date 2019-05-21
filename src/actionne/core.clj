@@ -16,6 +16,7 @@
             [clojure.java [classpath :as classpath]]
             [clojure.tools.namespace.find :as ns-find]
             [actionne.approutes :refer [app-routes]]
+            [clojure.java.io :as io]
             [actionne.classpath]
   )
 )
@@ -36,7 +37,7 @@
 
 (def example-rules
   "Ver 1.0.0
-   Namespace huoju/twitter
+   Namespace huoju/actionne-twitter
    Desc testsnsrules
    Do remove favorite_count > 5 retweet_count > 10 category = str:tweet
    Do notify favorite_count = 1 category = str:tweet 
@@ -148,15 +149,21 @@
     (doseq [plugin (enumeration-seq plugins)]
 (load-plugin (. ^java.net.URL plugin openStream)))))
 
+(defn expand-home [s]
+  (if (.startsWith s "~")
+    (clojure.string/replace-first s "~" (System/getProperty "user.home"))
+    s))
 
-(defn runrequire []
-    (-> "helloplugin.core/init" str (string/split #"/") first symbol require)
-)
-
-(defn runsession [session fact]
-    (print "===run session")
-    (print fact)
-    session
+(defn startcheck []
+  (let [homedir (expand-home (or (env :actionne-home) "~/actionne"))]
+    (if (not (or (.exists (io/file (str homedir "/data"))) (.exists (io/file (str homedir "/config"))) ))
+      (do
+        (.mkdirs (io/file (str homedir "/data")))
+        (.mkdirs (io/file (str homedir "/config")))
+      )
+    )
+    (log/info (str "using " homedir " as homedir"))
+  )
 )
 
 (defn -main [& args]
@@ -189,10 +196,10 @@
     ;(prn ((string/split "helloplugin.core/init" #"/") first symbol))
     ;(str (string/split #"/") first symbol require)
 
-    (actionne.classpath/add-classpath "/home/huoju/dev/snsplugin/twitter/target/twitter.jar")
-    (require (symbol "twitter.core"))
+    (actionne.classpath/add-classpath "/home/huoju/dev/actionne-twitter/target/actionne-twitter.jar")
+    (require (symbol "actionne-twitter.core"))
 
-    (let [tweets ((resolve (symbol "twitter.core/fetchtweets")) (:twitter env) )]
+    (let [tweets ((resolve (symbol "actionne-twitter.core/fetchtweets")) (:twitter env) )]
        (let [facts (map (fn [tweet] 
             (->Msgs (:id tweet) (:object tweet) (:original tweet))
         )  tweets) ]
@@ -221,8 +228,6 @@
 
         )
     )
-
-    
 )
 ;
 ;
