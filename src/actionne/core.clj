@@ -154,16 +154,19 @@
     (clojure.string/replace-first s "~" (System/getProperty "user.home"))
     s))
 
+
+(def homedir 
+  (expand-home (or (env :actionne-home) "~/actionne")))
+
 (defn startcheck []
-  (let [homedir (expand-home (or (env :actionne-home) "~/actionne"))]
-    (if (not (or (.exists (io/file (str homedir "/data"))) (.exists (io/file (str homedir "/config"))) ))
-      (do
-        (.mkdirs (io/file (str homedir "/data")))
-        (.mkdirs (io/file (str homedir "/config")))
-      )
+  (if (not (or (.exists (io/file (str homedir "/data"))) (.exists (io/file (str homedir "/config"))) (.exists (io/file (str homedir "/plugins"))) ))
+    (do
+      (.mkdirs (io/file (str homedir "/data")))
+      (.mkdirs (io/file (str homedir "/config")))
+      (.mkdirs (io/file (str homedir "/plugins")))
     )
-    (log/info (str "using " homedir " as homedir"))
   )
+  (log/info (str "using " homedir " as homedir"))
 )
 
 (defn -main [& args]
