@@ -11,7 +11,7 @@
   :plugins [ [lein-ring "0.12.0"] [lein-cljfmt "0.6.0"]]
   :dependencies [[org.clojure/clojure "1.9.0"],
     [instaparse "1.4.9"] ,
-    [metosin/compojure-api "1.1.11"]
+    [metosin/compojure-api "2.0.0-alpha30"]
     [ring/ring-jetty-adapter "1.6.3"]
     [com.cerner/clara-rules "0.18.0"]
     [tea-time "1.0.1"]

@@ -37,7 +37,7 @@
 
 (def example-rules
   "Ver 1.0.0
-   Namespace huoju/actionne-twitter
+   Namespace huoju/actionne_twitter
    Desc testsnsrules
    Do remove favorite_count > 5 retweet_count > 10 category = str:tweet
    Do notify favorite_count = 1 category = str:tweet 
@@ -125,11 +125,12 @@
 })
 
 (defn doaction [dslns msg]
-    (let [{identifier :NSIDENTIFIER  localname :NSLOCALNAME} dslns]
-        (let [{ {action :action id :id original :original} :?msg} msg]
 
-        ((resolve (symbol (str localname ".core/" action)) ) id original)
+    (println "doaction:=== ")
+    (let [{identifier :NSIDENTIFIER  localname :NSLOCALNAME} dslns]
         (println "run ns: " (str identifier "." localname))
+        (let [{ {action :action id :id original :original} :?msg} msg]
+        ((resolve (symbol (str localname ".core/" action)) ) id original)
         (println action id))
     )
 )
@@ -159,11 +160,12 @@
   (expand-home (or (env :actionne-home) "~/actionne")))
 
 (defn startcheck []
-  (if (not (or (.exists (io/file (str homedir "/data"))) (.exists (io/file (str homedir "/config"))) (.exists (io/file (str homedir "/plugins"))) ))
+  (if (not (or (.exists (io/file (str homedir "/data"))) (.exists (io/file (str homedir "/config"))) (.exists (io/file (str homedir "/plugins"))) (.exists (io/file (str homedir "/scripts"))) ))
     (do
       (.mkdirs (io/file (str homedir "/data")))
       (.mkdirs (io/file (str homedir "/config")))
       (.mkdirs (io/file (str homedir "/plugins")))
+      (.mkdirs (io/file (str homedir "/scripts")))
     )
   )
   (log/info (str "using " homedir " as homedir"))
@@ -199,10 +201,13 @@
     ;(prn ((string/split "helloplugin.core/init" #"/") first symbol))
     ;(str (string/split #"/") first symbol require)
 
-    (actionne.classpath/add-classpath "/home/huoju/dev/actionne-twitter/target/actionne-twitter.jar")
-    (require (symbol "actionne-twitter.core"))
+    (in-ns 'actionne.core)
+    (println *ns*)
+    (startcheck)
+    (actionne.classpath/add-classpath (str homedir "/plugins/actionne_twitter.jar"))
+    (require (symbol "actionne_twitter.core"))
 
-    (let [tweets ((resolve (symbol "actionne-twitter.core/fetchtweets")) (:twitter env) )]
+    (let [tweets ((resolve (symbol "actionne_twitter.core/fetchtweets")) (:twitter env) )]
        (let [facts (map (fn [tweet] 
             (->Msgs (:id tweet) (:object tweet) (:original tweet))
         )  tweets) ]
@@ -220,8 +225,11 @@
                                       (fire-rules))]
                         (println "====action")
                         (let [actionmsgs (query session get-actionmsgs)]
-                            ;(prn actionmsgs)
-                            (map (fn [msg] (doaction dslns msg)) actionmsgs)
+                            (println "====actionmsgs ")
+                            (println (count actionmsgs))
+                            (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
+                            (shutdown-agents)
+                            (println "====done")
                         )
                         )
                     )
