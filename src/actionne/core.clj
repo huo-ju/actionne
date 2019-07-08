@@ -19,6 +19,8 @@
             [clojure.java.io :as io]
             [actionne.classpath]
   )
+  (:import (java.util Date Locale) )
+
 )
 
 (defrecord Msgs [id obj original])
@@ -39,12 +41,14 @@
   "Ver 1.0.0
    Namespace huoju/actionne_twitter
    Desc testsnsrules
-   Do remove favorite_count > 5 retweet_count > 10 category = str:tweet
-   Do notify favorite_count = 1 category = str:tweet 
-   Do notify retweet_count = 15 category = str:tweet
-   Do notify category = str:tweet
-   Do show text include str:aaa category = str:tweet
+   Do notify created_at laterthan 1 day
 ")
+   ;Do remove favorite_count > 5 retweet_count > 10 category = str:tweet
+   ;Do notify favorite_count = 1 category = str:tweet 
+   ;Do notify retweet_count = 15 category = str:tweet
+   ;Do notify category = str:reply
+   ;Do notify category = str:tweet
+   ;Do show text include str:aaa category = str:tweet
 
 (def parser
   (insta/parser
@@ -54,9 +58,9 @@
     desc = <'Desc'> space utf8stre
     action = <'Do'> string space clause [clause]*
     clause = string symbol [ digit | strvar ] ?[unit]
-    unit = 'min' | 'day';
+    unit = 'minute' | 'day' | 'hour';
     logic = 'and' | 'or' | 'not';
-    symbol = '>' | '<' | '=' | '>=' | '<=' | '!=' | 'include';
+    symbol = '>' | '<' | '=' | '>=' | '<=' | '!=' | 'include' | 'laterthan';
     <percent> = #'[0-9]\\d?(?:\\.\\d{1,2})?%';
     <string> = #'[A-Za-z0-9_-]+';
     <space> = <#'[ ]+'>;
@@ -79,6 +83,29 @@
 (defn print-desc [input]
   (println (str "desc: " input)))
 
+
+(def df
+    (java.text.SimpleDateFormat. "EEE MMM dd HH:mm:ss ZZZZZ yyyy" (Locale. "english"))
+)
+
+(defn timelaterthan [left right unit]
+    (let [offset (- (.getTime (new java.util.Date)) (.getTime (.parse df left)))]
+        (println "offset:")
+        (println offset)
+        (if (>= (quot offset (* 60 1000)) (* right (time-to-minutes unit)))
+            true
+            false 
+        )
+
+    )
+)
+
+(def time-to-minutes
+    { "minute" `1
+      "hour" `60
+      "day" `1440
+})
+
 (def symbol-operator {"=" `=
                 ">" `>
                 "<" `<
@@ -86,6 +113,7 @@
                 "<=" `<=
                 "!=" `not=
                 "include" `string/includes?
+                "laterthan" `timelaterthan
                 })
 
 (def logic-operator {"and" `:and
@@ -108,7 +136,7 @@
    :clause (fn [property operator value & unit ]
     {
         :type Msgs
-        :constraints [(list `= (symbol "?msgid") (symbol "id"))  (list `= (symbol "?original") (symbol "original")) (list operator (list (keyword property) (symbol "obj")) value)]
+        :constraints [(list `= (symbol "?msgid") (symbol "id"))  (list `= (symbol "?original") (symbol "original")) (remove nil? (list operator (list (keyword property) (symbol "obj")) value (if (not= nil unit) (clojure.string/join unit))))]
     }
    )
    :symbol symbol-operator
@@ -136,8 +164,6 @@
 )
 
 (def app (api (apply routes app-routes)))
-;{:consumer-key "MVpOo3ttdkPeTfylWtkRqg", :consumer-secret "EvMJYxiV4VoO1SvMBNgElXbtOsQOGSofDvXrNdYm0"}
-;(env->UserCredentials)
 
 (defn load-plugin [^java.net.URL url]
   (let [{:keys [description init]} (edn/read-string (slurp url))]
@@ -207,13 +233,14 @@
     (actionne.classpath/add-classpath (str homedir "/plugins/actionne_twitter.jar"))
     (require (symbol "actionne_twitter.core"))
 
-    (let [tweets ((resolve (symbol "actionne_twitter.core/fetchtweets")) (:twitter env) )]
+    (let [tweets ((resolve (symbol "actionne_twitter.core/run")) (:twitter env) )]
+       (prn tweets)
        (let [facts (map (fn [tweet] 
             (->Msgs (:id tweet) (:object tweet) (:original tweet))
         )  tweets) ]
             (let [parse-tree (parser example-rules)]
                 (let [transformed (insta/transform transform-options parse-tree)]
-                    ;(clojure.pprint/pprint transformed)
+                    (clojure.pprint/pprint transformed)
                     (let [[ver dslns]  transformed]
                         (let [session (-> (mk-session 'actionne.core transformed)
                                       ;(runsession (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
@@ -226,9 +253,9 @@
                         (println "====action")
                         (let [actionmsgs (query session get-actionmsgs)]
                             (println "====actionmsgs ")
-                            (println (count actionmsgs))
+                            ;(println actionmsgs)
                             (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
-                            (shutdown-agents)
+                            ;(shutdown-agents)
                             (println "====done")
                         )
                         )
