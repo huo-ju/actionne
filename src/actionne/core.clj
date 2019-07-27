@@ -19,7 +19,7 @@
             [clojure.java.io :as io]
             [actionne.classpath]
   )
-  (:import (java.util Date Locale) )
+  (:import (java.util Date Locale ) java.io.PushbackReader)
 
 )
 
@@ -41,10 +41,12 @@
   "Ver 1.0.0
    Namespace huoju/actionne_twitter
    Desc testsnsrules
-   Do notify created_at laterthan 1 day
+   Do notify created_at laterthan 10 minute
+
 ")
+   ;Do notify favorite_count > 1 category = str:tweet 
    ;Do remove favorite_count > 5 retweet_count > 10 category = str:tweet
-   ;Do notify favorite_count = 1 category = str:tweet 
+   ;Do notify category = str:tweet
    ;Do notify retweet_count = 15 category = str:tweet
    ;Do notify category = str:reply
    ;Do notify category = str:tweet
@@ -88,10 +90,14 @@
     (java.text.SimpleDateFormat. "EEE MMM dd HH:mm:ss ZZZZZ yyyy" (Locale. "english"))
 )
 
+(def time-to-minutes
+    { "minute" `1
+      "hour" `60
+      "day" `1440
+})
+
 (defn timelaterthan [left right unit]
-    (let [offset (- (.getTime (new java.util.Date)) (.getTime (.parse df left)))]
-        (println "offset:")
-        (println offset)
+    (let [offset (- (.getTime (new java.util.Date)) left)]
         (if (>= (quot offset (* 60 1000)) (* right (time-to-minutes unit)))
             true
             false 
@@ -100,11 +106,6 @@
     )
 )
 
-(def time-to-minutes
-    { "minute" `1
-      "hour" `60
-      "day" `1440
-})
 
 (def symbol-operator {"=" `=
                 ">" `>
@@ -197,6 +198,28 @@
   (log/info (str "using " homedir " as homedir"))
 )
 
+(defn read-config-file [f]
+  (try
+    (when-let [url (or (io/resource f) (io/file f))]
+      (with-open [r (-> url io/reader PushbackReader.)]
+        (edn/read r)))
+    (catch Exception e
+      (log/warn (str "WARNING: failed to parse " f " " (.getLocalizedMessage e))))))
+
+
+(defn load-config [& name]
+    (let [configname (if (nil? name) "default.edn" (first name) ) ]
+        (read-config-file (str homedir "/config/" configname))
+    ) 
+)
+
+
+(defn load-scripts [scripts]
+    (map (fn [item] 
+        {:name (key item) :interval (val item) :script (slurp (str homedir "/scripts/" (name (first item)) ".act"))}
+    ) scripts)
+)
+
 (defn -main [& args]
     ;(let [parse-tree (parser example-rules)]
     ;    (let [transformed (insta/transform transform-options parse-tree)]
@@ -228,43 +251,44 @@
     ;(str (string/split #"/") first symbol require)
 
     (in-ns 'actionne.core)
-    (println *ns*)
     (startcheck)
     (actionne.classpath/add-classpath (str homedir "/plugins/actionne_twitter.jar"))
     (require (symbol "actionne_twitter.core"))
-
-    (let [tweets ((resolve (symbol "actionne_twitter.core/run")) (:twitter env) )]
-       (prn tweets)
-       (let [facts (map (fn [tweet] 
-            (->Msgs (:id tweet) (:object tweet) (:original tweet))
-        )  tweets) ]
-            (let [parse-tree (parser example-rules)]
-                (let [transformed (insta/transform transform-options parse-tree)]
-                    (clojure.pprint/pprint transformed)
-                    (let [[ver dslns]  transformed]
-                        (let [session (-> (mk-session 'actionne.core transformed)
-                                      ;(runsession (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
-                                      (insert-all (into [] facts))
-                                      ;(insert (->Msgs   tweets))
-                                      ;(insert-all (list (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}) (->Msgs "msg2" {:category "tweet" :like 1 :rt 10 :name "111paaabbb"})))
-                                      ;(insert )
-                                      ;(insert (->Msgs "msg3" {:category "reply" :like 6 :rt 15 :name "111222"})) 
-                                      (fire-rules))]
-                        (println "====action")
-                        (let [actionmsgs (query session get-actionmsgs)]
-                            (println "====actionmsgs ")
-                            ;(println actionmsgs)
-                            (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
-                            ;(shutdown-agents)
-                            (println "====done")
-                        )
+    (let [config (load-config)]
+        (let [scripts (load-scripts (:scripts config))]
+            (let [tweets ((resolve (symbol "actionne_twitter.core/run")) (:twitter env) )]
+                        (let [facts (map (fn [tweet] 
+                             (->Msgs (:id tweet) (:object tweet) (:original tweet))
+                         ) tweets) ]
+;(:script (first (load-scripts (:scripts (load-config)))))
+                             (let [parse-tree (parser  example-rules)]
+                                 (let [transformed (insta/transform transform-options parse-tree)]
+                                     (clojure.pprint/pprint transformed)
+                                     (let [[ver dslns]  transformed]
+                                         (let [session (-> (mk-session 'actionne.core transformed)
+                                                       ;(runsession (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
+                                                       (insert-all (into [] facts))
+                                                       ;(insert (->Msgs   tweets))
+                                                       ;(insert-all (list (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}) (->Msgs "msg2" {:category "tweet" :like 1 :rt 10 :name "111paaabbb"})))
+                                                       ;(insert )
+                                                       ;(insert (->Msgs "msg3" {:category "reply" :like 6 :rt 15 :name "111222"})) 
+                                                       (fire-rules))]
+                                         (println "====action")
+                                         (let [actionmsgs (query session get-actionmsgs)]
+                                             (println "====actionmsgs ")
+                                             ;(println actionmsgs)
+                                             (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
+                                             ;(shutdown-agents)
+                                             (println "====done")
+                                         )
+                                         )
+                                     )
+                                 )
+                             )
                         )
                     )
-                )
-            )
-
-
         )
+        
     )
 )
 ;
