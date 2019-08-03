@@ -16,6 +16,7 @@
     [com.cerner/clara-rules "0.18.0"]
     [tea-time "1.0.1"]
     [twttr "3.2.2"]
+    [clj-http "3.10.0"]
     [yogthos/config "1.1.1"]
     [org.tcrawley/dynapath "1.0.0"]
     [org.clojure/tools.namespace "0.2.11"]

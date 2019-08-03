@@ -260,38 +260,30 @@
                         (let [facts (map (fn [tweet] 
                              (->Msgs (:id tweet) (:object tweet) (:original tweet))
                          ) tweets) ]
-;(:script (first (load-scripts (:scripts (load-config)))))
-                             (let [parse-tree (parser  example-rules)]
-                                 (let [transformed (insta/transform transform-options parse-tree)]
-                                     (clojure.pprint/pprint transformed)
-                                     (let [[ver dslns]  transformed]
-                                         (let [session (-> (mk-session 'actionne.core transformed)
-                                                       ;(runsession (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
-                                                       (insert-all (into [] facts))
-                                                       ;(insert (->Msgs   tweets))
-                                                       ;(insert-all (list (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}) (->Msgs "msg2" {:category "tweet" :like 1 :rt 10 :name "111paaabbb"})))
-                                                       ;(insert )
-                                                       ;(insert (->Msgs "msg3" {:category "reply" :like 6 :rt 15 :name "111222"})) 
-                                                       (fire-rules))]
-                                         (println "====action")
-                                         (let [actionmsgs (query session get-actionmsgs)]
-                                             (println "====actionmsgs ")
-                                             ;(println actionmsgs)
-                                             (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
-                                             ;(shutdown-agents)
-                                             (println "====done")
-                                         )
-                                         )
-                                     )
-                                 )
-                             )
+                            (mapv (fn [scriptobj] 
+                                (let [parse-tree (parser  (:script scriptobj))]
+                                    (let [transformed (insta/transform transform-options parse-tree)]
+                                        (clojure.pprint/pprint transformed)
+                                        (let [[ver dslns]  transformed]
+                                            (let [session (-> (mk-session 'actionne.core transformed)
+                                                          (insert-all (into [] facts))
+                                                          (fire-rules))]
+                                            (println "====action")
+                                            (let [actionmsgs (query session get-actionmsgs)]
+                                                (println "====actionmsgs ")
+                                                (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
+                                                (shutdown-agents)
+                                                (println "====done")
+                                            )
+                                            )
+                                        )
+                                    )
+                                )
+                            ) scripts)
+                             ;
                         )
                     )
         )
         
     )
 )
-;
-;
-;
-;
