@@ -160,16 +160,6 @@
 
 (def app (api (apply routes app-routes)))
 
-(defn load-plugin [^java.net.URL url]
-  (let [{:keys [description init]} (edn/read-string (slurp url))]
-    (println  (str "loading module: " description))
-    (-> init str (string/split #"/") first symbol require)
-    ((resolve init))))
-
-(defn load-plugins []
-  (let [plugins (.getResources (ClassLoader/getSystemClassLoader) "helloplugin/hello.edn")]
-    (doseq [plugin (enumeration-seq plugins)]
-(load-plugin (. ^java.net.URL plugin openStream)))))
 
 (defn expand-home [s]
   (if (.startsWith s "~")
@@ -214,6 +204,42 @@
     ) scripts)
 )
 
+(defn runtask [pluginname config transformedscript]
+
+    (let [[ver dslns] transformedscript]
+        ((resolve (symbol (str pluginname ".core/before"))) ((keyword pluginname) config) )
+        (let [items ((resolve (symbol (str pluginname ".core/run"))) ((keyword pluginname) config))]
+            (let [facts (map (fn [item] 
+                 (->Msgs (:id item) (:object item) (:original item))
+             ) items) ]
+                (let [session (-> (mk-session 'actionne.core transformedscript)
+                              (insert-all (into [] facts))
+                              (fire-rules))]
+                (let [actionmsgs (query session get-actionmsgs)]
+                    (try
+                        (doall
+                            (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
+                            ((resolve (symbol (str pluginname ".core/success"))) ((keyword pluginname) config)))
+                    (catch Exception e 
+                        (log/error (str "doaction error: " (.getLocalizedMessage e)))
+                    ))
+                    (shutdown-agents)
+                    (log/info "task done.")
+                )
+                )
+            )
+            
+        )
+    )
+)
+
+(defmacro starttaskmacro [pluginname interval config transformedscript]
+  `(let [pluginname# ~pluginname interval# ~interval config# ~config transformedscript# ~transformedscript]
+    (def pluginname# (tt/every! interval# (bound-fn [] 
+        (runtask pluginname# config# transformedscript#)
+    )))
+))
+
 (defn -main [& args]
     ;(let [parse-tree (parser example-rules)]
     ;    (let [transformed (insta/transform transform-options parse-tree)]
@@ -233,57 +259,27 @@
     ;        )
     ;    )
     ;)
-    ;(log/info "start...")
-    ;(prn creds )
-    ;(tt/start!)
-    ;(def task (tt/every! 2 (bound-fn [] (log/info "hi."))))
-    ;(print "ok")
-    ;(run-jetty app {:port 3000})
-    ;(twitter/fetchtweets)
-    ;(load-plugins)
-    ;(prn ((string/split "helloplugin.core/init" #"/") first symbol))
-    ;(str (string/split #"/") first symbol require)
+
+    (log/info "start...")
 
     (in-ns 'actionne.core)
     (startcheck)
-    (actionne.classpath/add-classpath (str homedir "/plugins/actionne_twitter.jar"))
-    (require (symbol "actionne_twitter.core"))
+    (tt/start!)
+
     (let [config (load-config)]
         (let [scripts (load-scripts (:scripts config))]
-            (let [tweets ((resolve (symbol "actionne_twitter.core/run")) (:twitter env) )]
-                        (let [facts (map (fn [tweet] 
-                             (->Msgs (:id tweet) (:object tweet) (:original tweet))
-                         ) tweets) ]
-                            (mapv (fn [scriptobj] 
-                                
-                                (log/info (str "using script: " (name (:name scriptobj))))
-                                (let [parse-tree (parser  (:script scriptobj))]
-                                    (let [transformed (insta/transform transform-options parse-tree)]
-                                        (clojure.pprint/pprint transformed)
-                                        (let [[ver dslns]  transformed]
-                                            (let [session (-> (mk-session 'actionne.core transformed)
-                                                          (insert-all (into [] facts))
-                                                          (fire-rules))]
-                                            (let [actionmsgs (query session get-actionmsgs)]
-                                                (try
-                                                    (doall
-                                                        (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
-                                                        ((resolve (symbol "actionne_twitter.core/confirmtask")) (:twitter env)))
-                                                (catch Exception e 
-                                                    (log/error (str "doaction error: " (.getLocalizedMessage e)))
-                                                ))
-                                                (shutdown-agents)
-                                                (log/info "task done.")
-                                            )
-                                            )
-                                        )
-                                    )
-                                )
-                            ) scripts)
-                             ;
+            (mapv (fn [scriptobj] 
+                (let [parse-tree (parser (:script scriptobj))]
+                (let [transformedscript (insta/transform transform-options parse-tree)]
+                    (let [[ver dslns] transformedscript]
+                        (let [pluginname (:NSLOCALNAME dslns)]
+                            (log/info (str "loading... " homedir "/plugins/" pluginname ".jar"))
+                            (actionne.classpath/add-classpath (str homedir "/plugins/" pluginname ".jar"))
+                            (require (symbol (str pluginname ".core")))
+                            (starttaskmacro pluginname (:interval scriptobj) config transformedscript)
                         )
-                    )
+                    )))
+            ) scripts)
         )
-        
     )
 )
