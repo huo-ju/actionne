@@ -20,7 +20,6 @@
             [actionne.classpath]
   )
   (:import (java.util Date Locale ) java.io.PushbackReader)
-
 )
 
 (defrecord Msgs [id obj original])
@@ -154,15 +153,10 @@
 })
 
 (defn doaction [dslns msg]
-
-    (println "doaction:=== ")
     (let [{identifier :NSIDENTIFIER  localname :NSLOCALNAME} dslns]
-        (println "run ns: " (str identifier "." localname))
         (let [{ {action :action id :id original :original} :?msg} msg]
-        ((resolve (symbol (str localname ".core/" action)) ) id original)
-        (println action id))
-    )
-)
+            ((resolve (symbol (str localname ".core/" action)) ) id original)
+            (log/info (str "action: " identifier "." localname "/" action " " id)))))
 
 (def app (api (apply routes app-routes)))
 
@@ -261,6 +255,8 @@
                              (->Msgs (:id tweet) (:object tweet) (:original tweet))
                          ) tweets) ]
                             (mapv (fn [scriptobj] 
+                                
+                                (log/info (str "using script: " (name (:name scriptobj))))
                                 (let [parse-tree (parser  (:script scriptobj))]
                                     (let [transformed (insta/transform transform-options parse-tree)]
                                         (clojure.pprint/pprint transformed)
@@ -268,12 +264,16 @@
                                             (let [session (-> (mk-session 'actionne.core transformed)
                                                           (insert-all (into [] facts))
                                                           (fire-rules))]
-                                            (println "====action")
                                             (let [actionmsgs (query session get-actionmsgs)]
-                                                (println "====actionmsgs ")
-                                                (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
+                                                (try
+                                                    (doall
+                                                        (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
+                                                        ((resolve (symbol "actionne_twitter.core/confirmtask")) (:twitter env)))
+                                                (catch Exception e 
+                                                    (log/error (str "doaction error: " (.getLocalizedMessage e)))
+                                                ))
                                                 (shutdown-agents)
-                                                (println "====done")
+                                                (log/info "task done.")
                                             )
                                             )
                                         )
