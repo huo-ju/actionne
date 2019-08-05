@@ -41,8 +41,8 @@
    Namespace huoju/actionne_twitter
    Desc testsnsrules
    Do notify created_at laterthan 10 minute
-
 ")
+   ;Do delete created_at laterthan 240 minute category = str:retweet
    ;Do notify favorite_count > 1 category = str:tweet 
    ;Do remove favorite_count > 5 retweet_count > 10 category = str:tweet
    ;Do notify category = str:tweet
@@ -148,14 +148,14 @@
    :digit #(Integer/parseInt %)
    :action (fn [action & clauses]
              {
-            :lhs clauses;'~clauses
+            :lhs clauses
             :rhs `(insert! (->ActionMsgs ~action ~(symbol "?msgid") ~(symbol "?original")))})
 })
 
-(defn doaction [dslns msg]
+(defn doaction [config dslns msg]
     (let [{identifier :NSIDENTIFIER  localname :NSLOCALNAME} dslns]
         (let [{ {action :action id :id original :original} :?msg} msg]
-            ((resolve (symbol (str localname ".core/" action)) ) id original)
+            ((resolve (symbol (str localname ".core/" action)) ) config id original)
             (log/info (str "action: " identifier "." localname "/" action " " id)))))
 
 (def app (api (apply routes app-routes)))
@@ -218,10 +218,11 @@
                 (let [actionmsgs (query session get-actionmsgs)]
                     (try
                         (doall
-                            (dorun (map (fn [msg] (doaction dslns msg)) actionmsgs))
+                            (dorun (map (fn [msg] (doaction config dslns msg)) actionmsgs))
                             ((resolve (symbol (str pluginname ".core/success"))) ((keyword pluginname) config)))
                     (catch Exception e 
                         (log/error (str "doaction error: " (.getLocalizedMessage e)))
+                        (prn e)
                     ))
                     (shutdown-agents)
                     (log/info "task done.")
@@ -270,13 +271,17 @@
         (let [scripts (load-scripts (:scripts config))]
             (mapv (fn [scriptobj] 
                 (let [parse-tree (parser (:script scriptobj))]
+
+                (prn parse-tree)
                 (let [transformedscript (insta/transform transform-options parse-tree)]
                     (let [[ver dslns] transformedscript]
                         (let [pluginname (:NSLOCALNAME dslns)]
                             (log/info (str "loading... " homedir "/plugins/" pluginname ".jar"))
                             (actionne.classpath/add-classpath (str homedir "/plugins/" pluginname ".jar"))
                             (require (symbol (str pluginname ".core")))
-                            (starttaskmacro pluginname (:interval scriptobj) config transformedscript)
+                            ;(print config)
+                            (runtask pluginname config transformedscript)
+                            ;(starttaskmacro pluginname (:interval scriptobj) config transformedscript)
                         )
                     )))
             ) scripts)
