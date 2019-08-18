@@ -15,7 +15,6 @@
             [dynapath.util :as dynapath]
             [clojure.java [classpath :as classpath]]
             [clojure.tools.namespace.find :as ns-find]
-            [actionne.approutes :refer [app-routes]]
             [clojure.java.io :as io]
             [actionne.classpath]
   )
@@ -42,6 +41,11 @@
    Desc testsnsrules
    Do notify created_at laterthan 10 minute
 ")
+
+
+
+   ;Do delete created_at laterthan 240 minute category = str:tweet id != str:824653 id != 5235233 id != 5236113
+   ; 824653 https://twitter.com/virushuo/status/824653
    ;Do delete created_at laterthan 240 minute category = str:retweet
    ;Do notify favorite_count > 1 category = str:tweet 
    ;Do remove favorite_count > 5 retweet_count > 10 category = str:tweet
@@ -61,7 +65,7 @@
     clause = string symbol [ digit | strvar ] ?[unit]
     unit = 'minute' | 'day' | 'hour';
     logic = 'and' | 'or' | 'not';
-    symbol = '>' | '<' | '=' | '>=' | '<=' | '!=' | 'include' | 'laterthan';
+    symbol = '>' | '<' | '=' | '>=' | '<=' | '!=' | 'include' | 'notinclude' | 'laterthan';
     <percent> = #'[0-9]\\d?(?:\\.\\d{1,2})?%';
     <string> = #'[A-Za-z0-9_-]+';
     <space> = <#'[ ]+'>;
@@ -90,9 +94,13 @@
 )
 
 (def time-to-minutes
-    { "minute" `1
+    { 
+      "minute" `1
+      "minutes" `1
       "hour" `60
+      "hours" `60
       "day" `1440
+      "days" `1440
 })
 
 (defn timelaterthan [left right unit]
@@ -105,6 +113,10 @@
     )
 )
 
+(defn notinclude [left right]
+    (not (string/includes? left right))
+)
+
 
 (def symbol-operator {"=" `=
                 ">" `>
@@ -113,6 +125,7 @@
                 "<=" `<=
                 "!=" `not=
                 "include" `string/includes?
+                "notinclude" `notinclude
                 "laterthan" `timelaterthan
                 })
 
@@ -157,9 +170,6 @@
         (let [{ {action :action id :id original :original} :?msg} msg]
             ((resolve (symbol (str localname ".core/" action)) ) config id original)
             (log/info (str "action: " identifier "." localname "/" action " " id)))))
-
-(def app (api (apply routes app-routes)))
-
 
 (defn expand-home [s]
   (if (.startsWith s "~")
@@ -224,7 +234,6 @@
                         (log/error (str "doaction error: " (.getLocalizedMessage e)))
                         (prn e)
                     ))
-                    (shutdown-agents)
                     (log/info "task done.")
                 )
                 )
@@ -242,48 +251,25 @@
 ))
 
 (defn -main [& args]
-    ;(let [parse-tree (parser example-rules)]
-    ;    (let [transformed (insta/transform transform-options parse-tree)]
-    ;        (clojure.pprint/pprint transformed)
-    ;        (let [[ver dslns]  transformed]
-    ;            (let [session (-> (mk-session 'actionne.core transformed)
-    ;                          (insert (->Msgs "msg1" {:category "reply" :like 10 :rt 12 :name "test"}))
-    ;                          (insert (->Msgs "msg2" {:category "tweet" :like 1 :rt 10 :name "111paaabbb"}))
-    ;                          (insert (->Msgs "msg3" {:category "reply" :like 6 :rt 15 :name "111222"})) 
-    ;                          (fire-rules))]
-    ;            (println "====action")
-    ;            (let [actionmsgs (query session get-actionmsgs)]
-    ;                (println actionmsgs)
-    ;                (map (fn [msg] (doaction dslns msg)) actionmsgs)
-    ;            )
-    ;            )
-    ;        )
-    ;    )
-    ;)
 
     (log/info "start...")
 
-    (in-ns 'actionne.core)
+    ;(in-ns 'actionne.core)
     (startcheck)
     (tt/start!)
-
     (let [config (load-config)]
         (let [scripts (load-scripts (:scripts config))]
             (mapv (fn [scriptobj] 
                 (let [parse-tree (parser (:script scriptobj))]
-
-                (prn parse-tree)
                 (let [transformedscript (insta/transform transform-options parse-tree)]
                     (let [[ver dslns] transformedscript]
                         (let [pluginname (:NSLOCALNAME dslns)]
                             (log/info (str "loading... " homedir "/plugins/" pluginname ".jar"))
                             (actionne.classpath/add-classpath (str homedir "/plugins/" pluginname ".jar"))
                             (require (symbol (str pluginname ".core")))
-                            ;(print config)
-                            (runtask pluginname config transformedscript)
-                            ;(starttaskmacro pluginname (:interval scriptobj) config transformedscript)
-                        )
-                    )))
+                            ;(runtask pluginname config transformedscript)
+                            (starttaskmacro pluginname (:interval scriptobj) config transformedscript)
+                        ))))
             ) scripts)
         )
     )
