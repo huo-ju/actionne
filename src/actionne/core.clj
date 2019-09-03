@@ -178,7 +178,7 @@
 
 
 (def homedir 
-  (expand-home (or (env :actionne-home) "~/actionne")))
+  (expand-home (or (:homedir env) "~/actionne")))
 
 (defn startcheck []
   (if (not (or (.exists (io/file (str homedir "/data"))) (.exists (io/file (str homedir "/config"))) (.exists (io/file (str homedir "/plugins"))) (.exists (io/file (str homedir "/scripts"))) ))
@@ -235,13 +235,7 @@
                         (prn e)
                     ))
                     (log/info "task done.")
-                )
-                )
-            )
-            
-        )
-    )
-)
+                )))))) 
 
 (defmacro starttaskmacro [pluginname interval config transformedscript]
   `(let [pluginname# ~pluginname interval# ~interval config# ~config transformedscript# ~transformedscript]
@@ -267,10 +261,9 @@
                             (log/info (str "loading... " homedir "/plugins/" pluginname ".jar"))
                             (actionne.classpath/add-classpath (str homedir "/plugins/" pluginname ".jar"))
                             (require (symbol (str pluginname ".core")))
-                            ;(runtask pluginname config transformedscript)
-                            (starttaskmacro pluginname (:interval scriptobj) config transformedscript)
-                        ))))
-            ) scripts)
-        )
-    )
-)
+                            (if (= true ((resolve (symbol (str pluginname ".core/startcheck"))) ((keyword pluginname) config)))
+                                (starttaskmacro pluginname (:interval scriptobj) config transformedscript)
+                                (log/error (str pluginname " plugin startcheck error: " ))
+                            )
+                            (runtask pluginname config transformedscript)
+                        ))))) scripts))))
