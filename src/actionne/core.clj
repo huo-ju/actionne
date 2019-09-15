@@ -29,27 +29,6 @@
 (defquery get-msgs []
   [?msg <- Msgs])
 
-(def example-rules
-  "Ver 1.0.0
-   Namespace huoju/actionne_twitter
-   Desc testsnsrules
-   Do notify created_at laterthan 10 minute
-")
-
-
-
-   ;Do delete created_at laterthan 240 minute category = str:tweet id != str:824653 id != 5235233 id != 5236113
-   ; 824653 https://twitter.com/virushuo/status/824653
-   ;Do delete created_at laterthan 240 minute category = str:retweet
-   ;Do notify favorite_count > 1 category = str:tweet 
-   ;Do remove favorite_count > 5 retweet_count > 10 category = str:tweet
-   ;Do notify category = str:tweet
-   ;Do notify retweet_count = 15 category = str:tweet
-   ;Do notify category = str:reply
-   ;Do notify category = str:tweet
-   ;Do show text include str:aaa category = str:tweet
-
-
 (def parser
   (insta/parser
    "<statement> = ver namespace [ desc | action ]+
@@ -181,47 +160,52 @@
   (map (fn [item]
          {:name (key item) :interval (val item) :script (slurp (str homedir "/scripts/" (name (first item)) ".act"))}) scripts))
 
+(defn filteritems [transformedscript items]
+  (let [facts (map (fn [item]
+                     (->Msgs (:id item) (:object item) (:original item))) items)]
+    (let [session (-> (mk-session 'actionne.core transformedscript)
+                      (insert-all (into [] facts))
+                      (fire-rules))]
+      (query session get-actionmsgs))))
+
 (defn runtask [pluginname config transformedscript]
 
   (let [[ver dslns] transformedscript]
     ((resolve (symbol (str pluginname ".core/before"))) ((keyword pluginname) config))
     (let [items ((resolve (symbol (str pluginname ".core/run"))) ((keyword pluginname) config))]
-      (let [facts (map (fn [item]
-                         (->Msgs (:id item) (:object item) (:original item))) items)]
-        (let [session (-> (mk-session 'actionne.core transformedscript)
-                          (insert-all (into [] facts))
-                          (fire-rules))]
-          (let [actionmsgs (query session get-actionmsgs)]
-            (try
-              (doall
-               (dorun (map (fn [msg] (doaction config dslns msg)) actionmsgs))
-               ((resolve (symbol (str pluginname ".core/success"))) ((keyword pluginname) config)))
-              (catch Exception e
-                (log/error (str "doaction error: " (.getLocalizedMessage e)))
-                (prn e)))
-            (log/info "task done.")))))))
+      (let [actionmsgs (filteritems transformedscript items)]
+        (try
+          (do
+            (dorun (map (fn [msg] (doaction config dslns msg)) actionmsgs))
+            ((resolve (symbol (str pluginname ".core/success"))) ((keyword pluginname) config)))
+          (catch Exception e
+            (log/error (str "doaction error: " (.getLocalizedMessage e)))
+            (prn e)))
+        (log/info "task done.")))))
 
 (defmacro starttaskmacro [pluginname interval config transformedscript]
   `(let [pluginname# ~pluginname interval# ~interval config# ~config transformedscript# ~transformedscript]
      (def pluginname# (tt/every! interval# (bound-fn []
                                              (runtask pluginname# config# transformedscript#))))))
+(defn scripttransform [script]
+  (let [parse-tree (parser script)]
+    (insta/transform transform-options parse-tree)))
 
 (defn -main [& args]
-
   (log/info "start...")
   (startcheck)
   (tt/start!)
   (let [config (load-config)]
     (let [scripts (load-scripts (:scripts config))]
       (mapv (fn [scriptobj]
-              (let [parse-tree (parser (:script scriptobj))]
-                (let [transformedscript (insta/transform transform-options parse-tree)]
-                  (let [[ver dslns] transformedscript]
-                    (let [pluginname (:NSLOCALNAME dslns)]
-                      (log/info (str "loading... " homedir "/plugins/" pluginname ".jar"))
-                      (actionne.classpath/add-classpath (str homedir "/plugins/" pluginname ".jar"))
-                      (require (symbol (str pluginname ".core")))
-                      (if (= true ((resolve (symbol (str pluginname ".core/startcheck"))) ((keyword pluginname) config)))
-                        (starttaskmacro pluginname (:interval scriptobj) config transformedscript)
-                        (log/error (str pluginname " plugin startcheck error: ")))
-                      (runtask pluginname config transformedscript)))))) scripts))))
+              (let [transformedscript (scripttransform (:script scriptobj))]
+                (let [[ver dslns] transformedscript]
+                  (let [pluginname (:NSLOCALNAME dslns)]
+                    (log/info (str "loading... " homedir "/plugins/" pluginname ".jar"))
+                    (actionne.classpath/add-classpath (str homedir "/plugins/" pluginname ".jar"))
+                    (require (symbol (str pluginname ".core")))
+                    (if (= true ((resolve (symbol (str pluginname ".core/startcheck"))) ((keyword pluginname) config)))
+                      (starttaskmacro pluginname (:interval scriptobj) config transformedscript)
+                      (log/error (str pluginname " plugin startcheck error: ")))
+                    (runtask pluginname config transformedscript)))))
+            scripts))))
