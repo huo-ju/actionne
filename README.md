@@ -79,6 +79,52 @@ Do delete created_at laterthan 12 hour category = str:reply favorite_count < 20 
 
 配置文件用来定义运行周期，脚本名称，插件所需的环境变量和参数等。
 
+一个配置文件的例子：
+
+```
+{ :actionne_twitter {
+    :consumer-key ""
+    :consumer-secret ""
+    :user-token "" 
+    :user-token-secret "" 
+    :screen_name "YOURNAME"
+    :search_term "from:YOURNAME"
+    :watching "3 days"
+    :first_tweet "2006-12-01"
+    :lastest_tweet "2019-12-31"
+    :backup true
+    :dryloop false
+ }
+ :scripts{
+    :myscript 20
+ }
+
+}
+```
+:actionne_twitter  是对应名称插件的配置项。配置项细节可以在 actionne_twitter 项目中看到。
+:scripts 里面列出了脚本和对应脚本的运行周期。这里使用的配置 :myscript 前面保存的 myscript.act 的名字，20是每20秒运行一次。
+
+## 运行
+
+终于可以运行了。再次运行
+
+    java -Dhomedir="/YOUR_PATH" -jar actionne-0.1.0-SNAPSHOT-standalone.jar
+
+如果一切正常，会看到logs中提示已经正确加载了插件：
+
+    INFO: loading... /YOUR_PATH/plugins/actionne_twitter.jar
+
+这里我们使用了actionne_twitter插件，这个插件会先进行权限检查：
+
+INFO: call actionne_twitter/core.startcheck for account: YOURNAME
+
+如果没有登录信息，会提示oauth授权连接，允许访问之后把屏幕输出的pincode贴回终端回车，actionne_twitter会保存登录信息，之后进入正常运行状态。
+
+此时在 /YOU_PATH/data 目录下面会出现用户数据，比如 YOUNAME-actionne_twitter-session.clj 用来记录插件所需的状态数据。 .backup.log 备份数据（如果在actionne_twitter配置中允许了备份）。 
+
+只要actionne保持运行，它就会按照配置文件定义的运行周期反复获取数据，检查规则，执行动作。
+
+Tips: 如果在脚本中设置一个永远满足的条件，对应的动作就会永远运行。利用这个办法，甚至可以删光自己全部历史twitter内容。（actionne_twitter插件提供了从web获取历史tweets的方式，不受twitter api的3200条tweets限制。
 
 ## License
 
