@@ -1,0 +1,15 @@
+{ :actionne_twitter {
+    :consumer-key ""
+    :consumer-secret ""
+    :user-token "" 
+    :user-token-secret "" 
+    :screen_name "virushuo"
+    :watching "5 days"
+    :backup true
+    :dryloop false
+ }
+ :scripts{
+    :myscript 60
+ }
+
+}

@@ -1,0 +1,7 @@
+Ver 1.0.0
+Namespace huoju/actionne_twitter
+Desc mytwitter
+Do delete created_at laterthan 12 hour category = str:reply favorite_count < 20
+Do delete created_at laterthan 24 hour category = str:retweet
+Do delete created_at laterthan 24 hour category = str:tweet id != str:824653 favorite_count < 20 text notinclude str:#k text notinclude str:#t
+Do delete created_at laterthan 96 hour category = str:tweet id != str:824653 favorite_count < 100 text notinclude str:#k text notinclude str:#t
