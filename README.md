@@ -35,6 +35,8 @@ Run actionne:
           /plugins 插件
           /scripts DSL脚本
 
+可以参考examples目录的例子。
+
 ### 插件
 
 * 目前只有 twitter 插件: [twitter_actionne](https://github.com/virushuo/actionne-twitter) 
@@ -73,7 +75,14 @@ Do delete created_at laterthan 12 hour category = str:reply favorite_count < 20 
 
 所有的条件之间都是 And （并且）的关系。
 
-这里提供一个更复杂的脚本例子：
+这里提供一个更复杂的脚本例子： [myscript.act](https://github.com/virushuo/actionne/blob/master/examples/scripts/myscript.act)
+
+这个例子使用了4条触发删除动作的规则，分别为：
+
+1. 删除 创建超过12小时 并且 like数量小于20 的全部回复
+2. 删除 创建超过24小时 的全部retweet
+3. 删除 创建超过24小时 并且 like数量小于20 并且 id不为"824653" （保留它的原因是我想保留我发过的第一条推） 并且不包含 #k 或者 #t 这两个标记的推
+4. 和3类似，只是在96小时的时候改变一些参数
 
 ### 配置文件
 
