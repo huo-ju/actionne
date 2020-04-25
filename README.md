@@ -11,6 +11,8 @@
 
 ## Usage
 
+Check out the dummy guide here: [Install `actionne-twitter` for Dummies](/doc/installation-for-dummies.md)
+
 actionne 的目的是实现一个基于规则运行某个函数的框架。它可以解决很多问题，从删除符合一组自定义规则的信息，到控制智能家居设备，都可以基于它实现。
 
 为了足够的灵活性和可扩充性，actionne使用了插件和DSL设计。用户可以使用DSL语言描述业务规则，当获得了符合规则的消息，actionne会直接调用插件中的函数，从而完成用户预期的动作。
@@ -39,7 +41,7 @@ Run actionne:
 
 ### 插件
 
-* 目前只有 twitter 插件: [twitter_actionne](https://github.com/virushuo/actionne-twitter) 
+* 目前只有 twitter 插件: [twitter_actionne](https://github.com/virushuo/actionne-twitter)
 * 复制 actionne_twitter-0.1.0-SNAPSHOT.jar 到 /YOUR_PATH/plugins 目录
 
 ### DSL脚本
@@ -94,8 +96,8 @@ Do delete created_at laterthan 12 hour category = str:reply favorite_count < 20 
 { :actionne_twitter {
     :consumer-key ""
     :consumer-secret ""
-    :user-token "" 
-    :user-token-secret "" 
+    :user-token ""
+    :user-token-secret ""
     :screen_name "YOURNAME"
     :search_term "from:YOURNAME"
     :watching "3 days"
@@ -129,7 +131,7 @@ INFO: call actionne_twitter/core.startcheck for account: YOURNAME
 
 如果没有登录信息，会提示oauth授权连接，允许访问之后把屏幕输出的pincode贴回终端回车，actionne_twitter会保存登录信息，之后进入正常运行状态。
 
-此时在 /YOU_PATH/data 目录下面会出现用户数据，比如 YOUNAME-actionne_twitter-session.clj 用来记录插件所需的状态数据。 .backup.log 备份数据（如果在actionne_twitter配置中允许了备份）。 
+此时在 /YOU_PATH/data 目录下面会出现用户数据，比如 YOUNAME-actionne_twitter-session.clj 用来记录插件所需的状态数据。 .backup.log 备份数据（如果在actionne_twitter配置中允许了备份）。
 
 只要actionne保持运行，它就会按照配置文件定义的运行周期反复获取数据，检查规则，执行动作。
 
