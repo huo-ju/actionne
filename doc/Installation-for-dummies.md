@@ -97,3 +97,12 @@ actionne should be up and running then! You should be able to find user data und
 * Keep in mind that reserved words (e.g. `Namespace`) in a config file is case sensitive. Misspelling reserved words (e.g. `namespace`) will invoke weird errors, e.g. `nth not supported on this type`.
 * Script name in the config file must match with the name of the `.act` file under `/YOUR_PATH/scripts`.
 * A valid pair of `consumer-key` and `consumer-secret` is required. There are some unofficial consumer keys in the wild; try them at your risks.  
+
+## Ways to Keep it Running
+
+There are multiple ways to do so. I just listed a couple that I've tried so far:
+
+1. Open a console window and have it running. Remember to re-run the command if you lose connection to the console, though.
+2. Have the program running in `tmux` ([cheatsheet](https://tmuxcheatsheet.com/)). Not fun if you're a restart freak like me!
+3. Set up `systemctl`. **Recommend, pretty stable.**
+4. Ask the author to come up with a Docker version. Hopefully he will create one soon :)
