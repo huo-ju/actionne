@@ -51,7 +51,7 @@ An example rule: `Do delete created_at laterthan 12 hour category = str:reply` -
 * Tweets that are created 12 hours ago, AND
 * Category of the tweet = "reply"
 
-All conditions within a rule are joint through AND. This script ([myscript.act](myscript.act)) contains more complex instances.
+All conditions within a rule are joint through AND. This script ([myscript.act](../examples/scripts/myscript.act)) contains more complex instances.
 
 ### Config Files
 
