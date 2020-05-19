@@ -11,6 +11,8 @@
 
 ## Usage
 
+Check out this [dummy guide](doc/Installation-for-dummies.md) if you're new to the framework :)
+
 actionne 的目的是实现一个基于规则运行某个函数的框架。它可以解决很多问题，从删除符合一组自定义规则的信息，到控制智能家居设备，都可以基于它实现。
 
 为了足够的灵活性和可扩充性，actionne使用了插件和DSL设计。用户可以使用DSL语言描述业务规则，当获得了符合规则的消息，actionne会直接调用插件中的函数，从而完成用户预期的动作。
